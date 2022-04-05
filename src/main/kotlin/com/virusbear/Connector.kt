@@ -1,5 +1,6 @@
 package com.virusbear
 
+import io.ktor.util.network.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import java.io.Closeable
@@ -10,8 +11,7 @@ import java.net.UnknownHostException
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-abstract class Connector: Closeable {
-
+abstract class Connector(val src: NetworkAddress, val dest: NetworkAddress, val protocol: Protocol): Closeable {
     companion object {
         fun getByDefinition(definition: String): Connector {
             val parts = definition.split(" ")
@@ -40,7 +40,7 @@ abstract class Connector: Closeable {
 
             return when(protocol.lowercase()) {
                 "tcp" -> TcpConnector(src, dest)
-                "udp" -> TODO("UdpConnector(src, dest)")
+                "udp" -> UdpConnector(src, dest)
                 else -> throw ConnectorParsingException("Invalid protocol: $protocol")
             }
         }

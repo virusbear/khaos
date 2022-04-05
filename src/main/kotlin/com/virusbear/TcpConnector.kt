@@ -2,6 +2,7 @@ package com.virusbear
 
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
+import io.ktor.util.collections.*
 import kotlinx.coroutines.*
 import java.net.InetSocketAddress
 import java.util.LinkedList
@@ -9,25 +10,28 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 class TcpConnector(
-    private val src: InetSocketAddress,
-    private val dest: InetSocketAddress
-): Connector() {
+    src: InetSocketAddress,
+    dest: InetSocketAddress
+): Connector(src, dest, Protocol.Tcp) {
     private val dispatcher = Dispatchers.IO //TODO: maybe use: ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 64, 60L, TimeUnit.SECONDS, SynchronousQueue()).asCoroutineDispatcher()
     private val selector = ActorSelectorManager(dispatcher)
     private lateinit var serverSocket: ServerSocket
 
-    private val activeConnections: MutableList<TcpConnection> = LinkedList()
+    private val activeConnections: MutableList<TcpConnection> = ConcurrentList()
 
     private var job: Job? = null
 
     override fun close() {
         job?.cancel()
+
         activeConnections.forEach {
             it.close()
         }
-        activeConnections.forEach {
+        //use separate loop & toList() to prevent ConcurrentModificationException
+        activeConnections.toList().forEach {
             remove(it)
         }
+
         serverSocket.close()
     }
 
