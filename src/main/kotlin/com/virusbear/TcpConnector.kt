@@ -19,6 +19,8 @@ class TcpConnector(
 
     private val activeConnections: MutableList<TcpConnection> = ConcurrentList()
 
+    private var activeConnectionCount = GlobalMetrixBinder.gauge(khaosIdentifier("connections.active"))[mapOf("protocol" to "tcp")]
+
     private var job: Job? = null
 
     override fun close() {
@@ -42,8 +44,10 @@ class TcpConnector(
     }
 
     internal fun remove(connection: TcpConnection) {
+        if(connection in activeConnections) {
+            activeConnectionCount--
+        }
         activeConnections -= connection
-        //TODO: [metrics] decrement active connection count
     }
 
     override fun CoroutineScope.start(context: CoroutineContext) {
@@ -52,6 +56,7 @@ class TcpConnector(
             while(isActive) {
                 val clientSocket = serverSocket.accept()
 
+                activeConnectionCount++
                 TcpConnection(
                     this@TcpConnector,
                     clientSocket.connection(true),
@@ -59,7 +64,6 @@ class TcpConnector(
                 ).apply {
                     start()
                     activeConnections += this
-                    //TODO: [metrics] increment active connection count
                 }
             }
         }

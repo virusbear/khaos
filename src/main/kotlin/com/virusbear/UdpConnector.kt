@@ -8,14 +8,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.SendChannel
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.timer
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
 
 class UdpConnector(
     src: InetSocketAddress,
@@ -24,6 +19,8 @@ class UdpConnector(
     private val dispatcher = Dispatchers.IO //TODO: maybe use: ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 64, 60L, TimeUnit.SECONDS, SynchronousQueue()).asCoroutineDispatcher()
     private val selector = ActorSelectorManager(dispatcher)
     private lateinit var serverSocket: BoundDatagramSocket
+
+    private var activeConnectionCount = GlobalMetrixBinder.gauge(khaosIdentifier("connections.active"))[mapOf("protocol" to "udp")]
 
     private var job: Job? = null
 
@@ -36,7 +33,7 @@ class UdpConnector(
             while(isActive) {
                 for(datagram in serverSocket.incoming) {
                     val connection = translationTable.computeIfAbsent(datagram.address) {
-                        //TODO: [metrics] increment active connection count
+                        activeConnectionCount++
                         UDPConnection(
                             this@UdpConnector,
                             datagram.address,
@@ -53,8 +50,11 @@ class UdpConnector(
     }
 
     internal fun remove(addr: NetworkAddress) {
+        if(addr in translationTable) {
+            //Why is this always negativ?
+            activeConnectionCount--
+        }
         translationTable -= addr
-        //TODO: [metrics] decrement active connection count
     }
 
     override fun join() {
@@ -88,8 +88,15 @@ class UDPConnection(
     private var job: Job? = null
     private var ttlTimer: ResettableTimer? = null
 
+    private var outboundPacketCount = GlobalMetrixBinder.counter(khaosIdentifier("udp.packets.sent")).get()
+    private var inboundPacketCount = GlobalMetrixBinder.counter(khaosIdentifier("udp.packets.received")).get()
+    private var outboundThroughput = GlobalMetrixBinder.counter(khaosIdentifier("bytes.sent"))[mapOf("protocol" to "udp")]
+    private var inboundThroughput = GlobalMetrixBinder.counter(khaosIdentifier("bytes.received"))[mapOf("protocol" to "udp")]
+
     suspend fun send(packet: ByteReadPacket) {
-        //TODO: [metrics] increment packet count and througput with correct labels
+        inboundPacketCount++
+        inboundThroughput += packet.remaining
+
         socket.outgoing.send(Datagram(packet, dest))
         ttlTimer?.reset()
     }
@@ -108,7 +115,9 @@ class UDPConnection(
         }
         job = launch(context) {
             for(datagram in socket.incoming) {
-                //TODO: [metrics] increment packet count and througput with correct labels
+                outboundPacketCount++
+                outboundThroughput += datagram.packet.remaining
+
                 inboundSend.send(Datagram(datagram.packet, src))
                 ttlTimer?.reset()
             }

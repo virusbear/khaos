@@ -40,6 +40,6 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.github.microutils:kotlin-logging:2.1.21")
-    implementation("com.virusbear.metrix:metrix-micrometer:0.0.1")
+    implementation("com.virusbear.metrix:metrix-micrometer:0.0.2")
     implementation("io.ktor:ktor-network:$ktor_version")
 }
