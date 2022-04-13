@@ -41,7 +41,7 @@ internal class TcpConnection(
     }
 
     private suspend fun transfer(src: ByteReadChannel, dest: ByteWriteChannel, counter: Counter.TaggedCounter) {
-        while(true) {
+        while(!src.isClosedForRead && !dest.isClosedForWrite) {
             //4088 as defined in ByteBufferChannel. Value used to align buffer sizes. might be multiple of this
             val n = src.copyTo(dest, limit = 4088)
             counter += n

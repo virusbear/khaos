@@ -97,6 +97,11 @@ class UDPConnection(
         inboundPacketCount++
         inboundThroughput += packet.remaining
 
+        if(socket.outgoing.isClosedForSend) {
+            close()
+            return
+        }
+
         socket.outgoing.send(Datagram(packet, dest))
         ttlTimer?.reset()
     }
@@ -117,6 +122,10 @@ class UDPConnection(
             for(datagram in socket.incoming) {
                 outboundPacketCount++
                 outboundThroughput += datagram.packet.remaining
+
+                if(inboundSend.isClosedForSend) {
+                    break
+                }
 
                 inboundSend.send(Datagram(datagram.packet, src))
                 ttlTimer?.reset()
