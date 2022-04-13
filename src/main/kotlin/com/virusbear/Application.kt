@@ -4,17 +4,39 @@ import com.virusbear.metrix.Identifier
 import com.virusbear.metrix.micrometer.MetrixBinder
 import io.micrometer.core.instrument.logging.LoggingMeterRegistry
 import io.micrometer.core.instrument.logging.LoggingRegistryConfig
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
+import kotlinx.cli.default
 import kotlinx.coroutines.CoroutineScope
 import mu.KotlinLogging
 import java.io.File
 import java.net.BindException
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
+    val parser = ArgParser("khaos")
+
+    val configPath by parser.option(ArgType.String, "config-path", description = "path to configuration").default("/etc/khaos")
+
+    parser.parse(args)
+
     val LOGGER = KotlinLogging.logger("khaos")
     GlobalMetrixBinder.bindTo(LoggingMeterRegistry())
 
-    val lines = File("connectors").readLines().map {
+    val configRoot = File(configPath)
+    if(!configRoot.exists()) {
+        LOGGER.error("configuration directory does not exist: ${configRoot.absolutePath}")
+        exitProcess(1)
+    }
+
+    val connectorsConfig = File(configPath, "connectors")
+    if(!connectorsConfig.exists()) {
+        LOGGER.warn("no connectors configuration found")
+        exitProcess(0)
+    }
+
+    val lines = connectorsConfig.readLines().map {
         it.substringBefore("#").trim()
     }.filter { it.isNotEmpty() }
 
