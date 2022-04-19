@@ -13,7 +13,7 @@ class TcpConnector(
     src: InetSocketAddress,
     dest: InetSocketAddress
 ): Connector(src, dest, Protocol.Tcp) {
-    private val dispatcher = Dispatchers.IO //TODO: maybe use: ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 64, 60L, TimeUnit.SECONDS, SynchronousQueue()).asCoroutineDispatcher()
+    private val dispatcher = Dispatchers.IO
     private val selector = ActorSelectorManager(dispatcher)
     private lateinit var serverSocket: ServerSocket
 

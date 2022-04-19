@@ -44,4 +44,5 @@ dependencies {
     implementation("io.ktor:ktor-network:$ktor_version")
 
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-hocon:1.3.2")
 }
