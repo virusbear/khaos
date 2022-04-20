@@ -1,4 +1,4 @@
-package com.virusbear
+package com.virusbear.khaos.util
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

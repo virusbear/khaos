@@ -1,9 +1,8 @@
-package com.virusbear
+package com.virusbear.khaos.util
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ticker
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,3 +48,12 @@ class Test: BandwidthLimiter {
         }
     }
 }
+
+/*
+TODO: Not yet implemented
+@Serializable
+data class BandwidthConfig(
+    val connector: String? = null,
+    val connection: String? = null
+)
+ */

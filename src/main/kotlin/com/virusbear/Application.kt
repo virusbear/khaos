@@ -1,18 +1,22 @@
 package com.virusbear
 
+import com.virusbear.khaos.config.ConnectorDefinition
+import com.virusbear.khaos.config.Protocol
+import com.virusbear.khaos.tcp.TcpConnector
 import com.virusbear.metrix.Identifier
 import com.virusbear.metrix.micrometer.MetrixBinder
+import io.ktor.utils.io.pool.*
 import io.micrometer.core.instrument.logging.LoggingMeterRegistry
-import io.micrometer.core.instrument.logging.LoggingRegistryConfig
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
-import kotlinx.coroutines.CoroutineScope
 import mu.KotlinLogging
 import java.io.File
-import java.net.BindException
-import kotlin.coroutines.EmptyCoroutineContext
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
+import kotlin.time.Duration.Companion.seconds
 
 fun main(args: Array<String>) {
     val parser = ArgParser("khaos")
@@ -30,40 +34,36 @@ fun main(args: Array<String>) {
         exitProcess(1)
     }
 
-    val connectorsConfig = File(configPath, "connectors")
-    if(!connectorsConfig.exists()) {
-        LOGGER.warn("no connectors configuration found")
+    val connectorsDir = File(configPath, "connectors.d")
+    if(!connectorsDir.exists()) {
+        LOGGER.warn("no connector configurations found")
         exitProcess(0)
     }
 
-    val lines = connectorsConfig.readLines().map {
-        it.substringBefore("#").trim()
-    }.filter { it.isNotEmpty() }
+    val connectorDefinitions = (connectorsDir.listFiles() ?: emptyArray()).filter { it.isFile }.mapNotNull {
+        ConnectorDefinition.parse(it)
+    }.distinctBy { (name, _) -> name }
 
+    //TODO: load parameters from khaos.conf
+    //TODO: Bufferpool per connector or for all connectors?
+    //see TcpConnector.kt
+    val tcpBufferPool = DirectByteBufferPool(64, 8192)
+    //TODO: load from khaos.conf -> use
+    val maxTcpWorkerThreads = Runtime.getRuntime().availableProcessors().coerceAtLeast(8)
+    val tcpWorkerThreadsKeepAlive = 60.0.seconds
+    val tcpWorkerPool = ThreadPoolExecutor(
+        1,
+        maxTcpWorkerThreads,
+        tcpWorkerThreadsKeepAlive.inWholeMilliseconds,
+        TimeUnit.MILLISECONDS,
+        SynchronousQueue()
+    )
 
-    val connectors = lines.mapNotNull {
-        try {
-            Connector.getByDefinition(it)
-        } catch (ex: ConnectorParsingException) {
-            LOGGER.warn("error parsing connector: ${ex.message} (Definition: $it)")
-            null
-        }
-    }
-
-    val scope = CoroutineScope(EmptyCoroutineContext)
-    connectors.mapNotNull { connector ->
-        //TODO: quite ugly -> fix
-        scope.run {
-            connector.run {
-                try {
-                    start()
-                    this
-                } catch(ex: BindException) {
-                    LOGGER.warn(ex.message)
-                    null
-                }
-            }
-        }
+    //TODO: Temporary
+    connectorDefinitions.filter { (_, definition) -> definition.protocol == Protocol.tcp }.map { (name, def) ->
+        TcpConnector(name, def.listen, def.connect, def.blacklist/*Load blacklist from blacklist.d directory*/, tcpBufferPool, tcpWorkerPool)
+    }.onEach {
+        it.start(wait = false)
     }.forEach {
         it.join()
     }
