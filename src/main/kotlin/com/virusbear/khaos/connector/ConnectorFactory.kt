@@ -38,17 +38,12 @@ class ConnectorFactory(
             }
         }
 
-    //virusbear [20220423]: may be problematic for large connector count. See createBufferPool
+    //virusbear [20220423]: may be problematic for large connector count.
     //having a dedicated WorkerPool for each connector may increase performance on single connector but results in high overall thread count
     //does corePoolSize=1 solve this problem?
-    private fun createWorkerPool(): ExecutorService =
-        ThreadPoolExecutor(
-            1,
-            workerPoolSize,
-            60L,
-            TimeUnit.SECONDS,
-            SynchronousQueue()
-        )
+    //dedicated WorkerPool may be overpowered for low connection count connectors. single Workerpool could be shared
+    private fun createWorkerPool(): KhaosWorkerPool =
+        ExecutorServiceKhaosWorkerPool.dynamicWorkerPool(workerPoolSize)
 
     private fun loadBlackLists(blacklists: List<String>): MultiBlackList =
         MultiBlackList(
