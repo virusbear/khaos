@@ -1,31 +1,33 @@
 package com.virusbear.khaos.connector.udp
 
+import com.virusbear.khaos.Blacklist
+import com.virusbear.khaos.config.Protocol
+import com.virusbear.khaos.connector.Connector
 import com.virusbear.khaos.connector.tcp.TcpConnection
-import io.ktor.network.sockets.*
-import io.ktor.network.util.*
+import io.ktor.utils.io.pool.*
 import mu.KotlinLogging
 import java.net.BindException
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.nio.channels.AlreadyBoundException
-import java.nio.channels.SelectionKey
+import java.nio.channels.DatagramChannel
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
-import java.util.ArrayList
 import java.util.concurrent.ExecutorService
 import kotlin.concurrent.thread
 
 class UdpConnector(
-    val name: String,
-    val bind: InetSocketAddress,
-    val connect: InetSocketAddress,
-    val blacklist: List<String>,
-    val workerPool: ExecutorService
-) {
+    name: String,
+    bind: InetSocketAddress,
+    connect: InetSocketAddress,
+    blacklist: Blacklist,
+    val workerPool: ExecutorService,
+    val bufferPool: DirectByteBufferPool
+): Connector(name, bind, connect, blacklist, Protocol.udp) {
     private val Logger = KotlinLogging.logger("UdpConnector($name)")
 
     private val selector = Selector.open()
-    private val socket = DatagramSocket(null)
+    private val socket = DatagramChannel(null)
     private var selectorThread: Thread? = null
 
     //TODO: refactor run implementation to abstract Connector class? Similar implementation as TcpConnector

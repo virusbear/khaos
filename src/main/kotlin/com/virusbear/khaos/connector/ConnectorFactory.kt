@@ -32,6 +32,11 @@ class ConnectorFactory(
     //    : Specify SharedBufferPoolSize using CLI argument
     private fun createBufferPool(proto: Protocol): DirectByteBufferPool =
         when(proto) {
+            //TODO: Make this function return KhaosBufferPool
+            //TODO: Interface: borrow(), return(), release()[releases sharedBuffer from current connector instance (calls destroy for dedicatedPool)], destroy()[Closes all attached buffers and renders this pool unusable]
+            //TODO: Implementations: DedicatedKhaosBufferPool -> close closes all attached buffers
+            //TODO:                : SharedKhaosBufferPool -> close does not close attached buffers but will be kept alive -> find some other way of calling close() when it does not close anything?
+            //TODO:                : Use DirectByteBufferPool under the hood. Helps change the underlying implementation later down the line
             Protocol.udp -> DirectByteBufferPool(udpBufferCount, MAX_UDP_PACKET_SIZE)
             Protocol.tcp -> DirectByteBufferPool(tcpBufferCount, tcpBufferSize)
         }
@@ -63,7 +68,7 @@ class ConnectorFactory(
 
         return when(proto) {
             Protocol.tcp -> TcpConnector(name, bind, connect, loadBlackLists(blacklists), buffers, workers)
-            Protocol.udp -> UdpConnector(name, bind, connect, loadBlackLists(blacklists), buffers, workers)
+            Protocol.udp -> UdpConnector(name, bind, connect, loadBlackLists(blacklists), workers, buffers)
         }
     }
 }

@@ -25,6 +25,7 @@ class TcpConnector(
     private val Logger = KotlinLogging.logger("TcpConnector($name)")
     private val connections = ArrayList<TcpConnection>()
 
+    //TODO: introduce SelectorEventLoop to handle all kind of interactions with selectors incl. dedicated threads for running selector
     private val selector = Selector.open()
     private val socket = ServerSocketChannel.open()
     private var selectorThread: Thread? = null
