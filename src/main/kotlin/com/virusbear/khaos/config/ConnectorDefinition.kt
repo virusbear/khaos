@@ -2,6 +2,7 @@ package com.virusbear.khaos.config
 
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
+import com.virusbear.khaos.connector.BufferPoolMode
 import com.virusbear.khaos.util.DurationSerializer
 import com.virusbear.khaos.util.InetSocketAddressSerializer
 import kotlinx.serialization.Serializable
@@ -20,6 +21,7 @@ data class ConnectorDefinition(
     val listen: InetSocketAddress,
     @Serializable(with = InetSocketAddressSerializer::class)
     val connect: InetSocketAddress,
+    val bufferMode: BufferPoolMode = BufferPoolMode.dedicated,
     val protocol: Protocol = Protocol.tcp,
     @Serializable(with = DurationSerializer::class)
     val ttl: Duration = 2.0.seconds,
