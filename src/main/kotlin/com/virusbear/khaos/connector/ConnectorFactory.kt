@@ -22,20 +22,21 @@ class ConnectorFactory(
     private val sharedUdpBufferPool: Lazy<SharedKhaosBufferPool>
 ) {
     private fun createBufferPool(proto: Protocol, mode: BufferPoolMode = BufferPoolMode.dedicated): KhaosBufferPool =
-        //TODO: refactor nested with
         when(mode) {
-            BufferPoolMode.shared -> {
-                when(proto) {
-                    Protocol.udp -> sharedUdpBufferPool.value
-                    Protocol.tcp -> sharedTcpBufferPool.value
-                }
-            }
-            BufferPoolMode.dedicated -> {
-                when(proto) {
-                    Protocol.udp -> DedicatedKhaosBufferPool(udpBufferCount, MAX_UDP_PACKET_SIZE)
-                    Protocol.tcp -> DedicatedKhaosBufferPool(tcpBufferCount, tcpBufferSize)
-                }
-            }
+            BufferPoolMode.shared -> sharedBufferPoolForProtocol(proto)
+            BufferPoolMode.dedicated -> dedicatedBufferPoolForProtocol(proto)
+        }
+
+    private fun sharedBufferPoolForProtocol(protocol: Protocol): KhaosBufferPool =
+        when(protocol) {
+            Protocol.udp -> sharedUdpBufferPool.value
+            Protocol.tcp -> sharedTcpBufferPool.value
+        }
+
+    private fun dedicatedBufferPoolForProtocol(protocol: Protocol): KhaosBufferPool =
+        when(protocol) {
+            Protocol.udp -> DedicatedKhaosBufferPool(udpBufferCount, MAX_UDP_PACKET_SIZE)
+            Protocol.tcp -> DedicatedKhaosBufferPool(tcpBufferCount, tcpBufferSize)
         }
 
     //virusbear [20220423]: may be problematic for large connector count.

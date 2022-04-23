@@ -50,7 +50,7 @@ object BlacklistProvider {
     operator fun get(name: String): Blacklist =
         synchronized(blacklists) {
             blacklists[name] ?: run {
-                //TODO: load from config
+                //TODO: load from directory from config
                 val blacklistFile = File("/etc/khaos/blacklist.d/$name")
                 return if(!blacklistFile.exists()) {
                     NamedBlacklist(name, emptyList())
