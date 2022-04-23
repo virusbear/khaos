@@ -1,4 +1,4 @@
-package com.virusbear.khaos.tcp
+package com.virusbear.khaos.connector.tcp
 
 import io.ktor.utils.io.pool.*
 import mu.KotlinLogging

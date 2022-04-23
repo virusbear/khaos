@@ -1,6 +1,6 @@
-package com.virusbear.khaos.udp
+package com.virusbear.khaos.connector.udp
 
-import com.virusbear.khaos.tcp.TcpConnection
+import com.virusbear.khaos.connector.tcp.TcpConnection
 import io.ktor.network.sockets.*
 import io.ktor.network.util.*
 import mu.KotlinLogging
@@ -31,7 +31,7 @@ class UdpConnector(
     //TODO: refactor run implementation to abstract Connector class? Similar implementation as TcpConnector
     private fun run() {
         Logger.info("Connector started")
-aSocket().udp().bind()
+
         while(selector.isOpen) {
             selector.select { key ->
                 if(key.isAcceptable) {

@@ -2,7 +2,8 @@ package com.virusbear
 
 import com.virusbear.khaos.config.ConnectorDefinition
 import com.virusbear.khaos.config.Protocol
-import com.virusbear.khaos.tcp.TcpConnector
+import com.virusbear.khaos.connector.ConnectorFactory
+import com.virusbear.khaos.connector.tcp.TcpConnector
 import com.virusbear.metrix.Identifier
 import com.virusbear.metrix.micrometer.MetrixBinder
 import io.ktor.utils.io.pool.*
@@ -22,6 +23,10 @@ fun main(args: Array<String>) {
     val parser = ArgParser("khaos")
 
     val configPath by parser.option(ArgType.String, "config-path", description = "path to configuration").default("/etc/khaos")
+    val tcpBufferCount by parser.option(ArgType.Int, "tcp-buffers", description = "the number of buffers to allocate for each tcp connector").default(1024)
+    val udpBufferCount by parser.option(ArgType.Int, "udp-buffers", description = "the number of buffers to allocate for each udp connector").default(1024)
+    val tcpBufferSize by parser.option(ArgType.Int, "tcp-buffer-size", description = "the size of each tcp buffer").default(8192)
+    val connectorWorkerCount by parser.option(ArgType.Int, "connector-workers", description = "the number of worker threads to start per connector").default(Runtime.getRuntime().availableProcessors().coerceAtLeast(8))
 
     parser.parse(args)
 
@@ -44,24 +49,10 @@ fun main(args: Array<String>) {
         ConnectorDefinition.parse(it)
     }.distinctBy { (name, _) -> name }
 
-    //TODO: load parameters from khaos.conf
-    //TODO: Bufferpool per connector or for all connectors?
-    //see TcpConnector.kt
-    val tcpBufferPool = DirectByteBufferPool(64, 8192)
-    //TODO: load from khaos.conf -> use
-    val maxTcpWorkerThreads = Runtime.getRuntime().availableProcessors().coerceAtLeast(8)
-    val tcpWorkerThreadsKeepAlive = 60.0.seconds
-    val tcpWorkerPool = ThreadPoolExecutor(
-        1,
-        maxTcpWorkerThreads,
-        tcpWorkerThreadsKeepAlive.inWholeMilliseconds,
-        TimeUnit.MILLISECONDS,
-        SynchronousQueue()
-    )
+    val connectorFactory = ConnectorFactory(tcpBufferCount, udpBufferCount, tcpBufferSize, connectorWorkerCount)
 
-    //TODO: Temporary
-    connectorDefinitions.filter { (_, definition) -> definition.protocol == Protocol.tcp }.map { (name, def) ->
-        TcpConnector(name, def.listen, def.connect, def.blacklist/*Load blacklist from blacklist.d directory*/, tcpBufferPool, tcpWorkerPool)
+    connectorDefinitions.map { (name, def) ->
+        connectorFactory.create(name, def.listen, def.connect, def.protocol, def.blacklist)
     }.onEach {
         it.start(wait = false)
     }.forEach {

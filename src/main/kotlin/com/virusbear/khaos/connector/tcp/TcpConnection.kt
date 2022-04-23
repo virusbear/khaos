@@ -1,4 +1,4 @@
-package com.virusbear.khaos.tcp
+package com.virusbear.khaos.connector.tcp
 
 import io.ktor.utils.io.pool.*
 import java.io.IOException
@@ -84,6 +84,7 @@ class TcpConnection(
                 }
 
                 //TODO: Log count to monitoring
+                //TODO: get correct meter from socketchannel somehow
 
                 buf.flip()
 
@@ -104,7 +105,8 @@ class TcpConnection(
             close()
         } catch(ex: IOException) {
             //TODO: Handle Exception somehow?
-            //TODO: What about other exceptions?
+            //TODO: Which exceptions may be thrown here?
+            //TODO: Do we need some special handling for those?
             close()
         } finally {
             bufferPool.recycle(buf)
