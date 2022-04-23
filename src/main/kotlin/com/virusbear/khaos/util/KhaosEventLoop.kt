@@ -1,5 +1,6 @@
-package com.virusbear.khaos
+package com.virusbear.khaos.util
 
+import com.virusbear.khaos.statistics.KhaosEventLoopStatistics
 import java.nio.channels.SelectableChannel
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector

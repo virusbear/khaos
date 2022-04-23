@@ -1,4 +1,4 @@
-package com.virusbear.khaos
+package com.virusbear.khaos.statistics
 
 import kotlin.reflect.KClass
 

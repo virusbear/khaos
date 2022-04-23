@@ -1,4 +1,4 @@
-package com.virusbear.khaos
+package com.virusbear.khaos.util
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue

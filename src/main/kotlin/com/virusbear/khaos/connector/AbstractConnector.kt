@@ -1,7 +1,7 @@
 package com.virusbear.khaos.connector
 
-import com.virusbear.khaos.Blacklist
-import com.virusbear.khaos.KhaosEventLoop
+import com.virusbear.khaos.util.Blacklist
+import com.virusbear.khaos.util.KhaosEventLoop
 import com.virusbear.khaos.config.Protocol
 import java.net.BindException
 import java.net.InetSocketAddress

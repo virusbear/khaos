@@ -1,13 +1,12 @@
 package com.virusbear.khaos.connector.udp
 
-import com.virusbear.khaos.Blacklist
+import com.virusbear.khaos.util.Blacklist
 import com.virusbear.khaos.config.Protocol
 import com.virusbear.khaos.connector.Connector
 import com.virusbear.khaos.connector.tcp.TcpConnection
 import io.ktor.utils.io.pool.*
 import mu.KotlinLogging
 import java.net.BindException
-import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.nio.channels.AlreadyBoundException
 import java.nio.channels.DatagramChannel

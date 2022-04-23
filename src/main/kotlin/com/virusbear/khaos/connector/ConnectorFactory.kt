@@ -1,14 +1,10 @@
 package com.virusbear.khaos.connector
 
-import com.virusbear.khaos.*
 import com.virusbear.khaos.config.Protocol
 import com.virusbear.khaos.connector.tcp.TcpConnector
 import com.virusbear.khaos.connector.udp.UdpConnector
+import com.virusbear.khaos.util.*
 import java.net.InetSocketAddress
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.SynchronousQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
 
 const val MAX_UDP_PACKET_SIZE = 65535
 
