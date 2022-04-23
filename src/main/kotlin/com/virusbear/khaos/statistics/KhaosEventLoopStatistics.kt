@@ -1,6 +1,5 @@
 package com.virusbear.khaos.statistics
 
-import com.virusbear.khaos.util.KhaosEventListener
 import com.virusbear.khaos.util.KhaosEventLoop
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
@@ -41,7 +40,7 @@ class KhaosEventLoopStatistics(
     var writableEvents: Long = 0
         private set
 
-    private inner class Listener: KhaosEventListener {
+    private inner class Listener: KhaosEventLoop.Listener {
         override fun onAcceptable(key: SelectionKey) {
             acceptableEvents++
         }

@@ -7,15 +7,15 @@ import java.nio.channels.Selector
 import java.util.*
 import kotlin.concurrent.thread
 
-interface KhaosEventListener {
-    fun onAcceptable(key: SelectionKey) {}
-    fun onConnectable(key: SelectionKey) {}
-    fun onReadable(key: SelectionKey) {}
-    fun onWritable(key: SelectionKey) {}
-}
-
 class KhaosEventLoop: AutoCloseable {
-    private val listeners: MutableList<KhaosEventListener> = LinkedList()
+    interface Listener {
+        fun onAcceptable(key: SelectionKey) {}
+        fun onConnectable(key: SelectionKey) {}
+        fun onReadable(key: SelectionKey) {}
+        fun onWritable(key: SelectionKey) {}
+    }
+
+    private val listeners: MutableList<Listener> = LinkedList()
     private val selector = Selector.open()
 
     private val statistics = KhaosEventLoopStatistics(this, selector)
@@ -49,13 +49,13 @@ class KhaosEventLoop: AutoCloseable {
         eventLoopThread?.join()
     }
 
-    fun addListener(eventListener: KhaosEventListener) {
+    fun addListener(eventListener: Listener) {
         synchronized(listeners) {
             listeners += eventListener
         }
     }
 
-    fun removeListener(eventListener: KhaosEventListener) {
+    fun removeListener(eventListener: Listener) {
         synchronized(listeners) {
             listeners -= eventListener
         }
