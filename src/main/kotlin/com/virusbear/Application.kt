@@ -3,7 +3,9 @@ package com.virusbear
 import com.virusbear.khaos.config.ConnectorDefinition
 import com.virusbear.khaos.config.Protocol
 import com.virusbear.khaos.connector.ConnectorFactory
+import com.virusbear.khaos.connector.MAX_UDP_PACKET_SIZE
 import com.virusbear.khaos.connector.tcp.TcpConnector
+import com.virusbear.khaos.util.SharedKhaosBufferPool
 import com.virusbear.metrix.Identifier
 import com.virusbear.metrix.micrometer.MetrixBinder
 import io.ktor.utils.io.pool.*
@@ -27,6 +29,8 @@ fun main(args: Array<String>) {
     val udpBufferCount by parser.option(ArgType.Int, "udp-buffers", description = "the number of buffers to allocate for each udp connector").default(1024)
     val tcpBufferSize by parser.option(ArgType.Int, "tcp-buffer-size", description = "the size of each tcp buffer").default(8192)
     val connectorWorkerCount by parser.option(ArgType.Int, "connector-workers", description = "the number of worker threads to start per connector").default(Runtime.getRuntime().availableProcessors().coerceAtLeast(8))
+    val sharedUdpBufferCount by parser.option(ArgType.Int, "shared-udp-buffers", description = "the number of buffers in the shared udp buffer pool").default(1024)
+    val sharedTcpBufferCount by parser.option(ArgType.Int, "shared-tcp-buffers", description = "the number of buffers in the shared tcp buffer pool").default(1024)
 
     parser.parse(args)
 
@@ -49,10 +53,13 @@ fun main(args: Array<String>) {
         ConnectorDefinition.parse(it)
     }.distinctBy { (name, _) -> name }
 
-    val connectorFactory = ConnectorFactory(tcpBufferCount, udpBufferCount, tcpBufferSize, connectorWorkerCount)
+    val sharedTcpBufferPool: () -> SharedKhaosBufferPool = { SharedKhaosBufferPool(sharedTcpBufferCount, tcpBufferSize) }
+    val sharedUdpBufferPool: () -> SharedKhaosBufferPool = { SharedKhaosBufferPool(sharedUdpBufferCount, MAX_UDP_PACKET_SIZE) }
+
+    val connectorFactory = ConnectorFactory(tcpBufferCount, udpBufferCount, tcpBufferSize, connectorWorkerCount, sharedTcpBufferPool, sharedUdpBufferPool)
 
     connectorDefinitions.map { (name, def) ->
-        connectorFactory.create(name, def.listen, def.connect, def.protocol, def.blacklist)
+        connectorFactory.create(name, def.listen, def.connect, def.protocol, def.blacklist, def.bufferMode)
     }.onEach {
         it.start(wait = false)
     }.forEach {

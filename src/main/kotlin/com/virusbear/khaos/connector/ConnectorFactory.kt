@@ -2,21 +2,26 @@ package com.virusbear.khaos.connector
 
 import com.virusbear.khaos.config.Protocol
 import com.virusbear.khaos.connector.tcp.TcpConnector
-import com.virusbear.khaos.connector.udp.UdpConnector
 import com.virusbear.khaos.util.*
 import java.net.InetSocketAddress
 
 const val MAX_UDP_PACKET_SIZE = 65535
 
-//TODO: Implement
 class ConnectorFactory(
     private val tcpBufferCount: Int,
     private val udpBufferCount: Int,
     private val tcpBufferSize: Int,
     private val workerPoolSize: Int,
-    private val sharedTcpBufferPool: Lazy<SharedKhaosBufferPool>,
-    private val sharedUdpBufferPool: Lazy<SharedKhaosBufferPool>
+    sharedTcpBufferPool: () -> SharedKhaosBufferPool,
+    sharedUdpBufferPool: () -> SharedKhaosBufferPool
 ) {
+    private val sharedTcpBufferPool by lazy {
+        sharedTcpBufferPool()
+    }
+    private val sharedUdpBufferPool by lazy {
+        sharedUdpBufferPool()
+    }
+
     private fun createBufferPool(proto: Protocol, mode: BufferPoolMode = BufferPoolMode.dedicated): KhaosBufferPool =
         when(mode) {
             BufferPoolMode.shared -> sharedBufferPoolForProtocol(proto)
@@ -25,8 +30,8 @@ class ConnectorFactory(
 
     private fun sharedBufferPoolForProtocol(protocol: Protocol): KhaosBufferPool =
         when(protocol) {
-            Protocol.udp -> sharedUdpBufferPool.value
-            Protocol.tcp -> sharedTcpBufferPool.value
+            Protocol.udp -> sharedUdpBufferPool
+            Protocol.tcp -> sharedTcpBufferPool
         }
 
     private fun dedicatedBufferPoolForProtocol(protocol: Protocol): KhaosBufferPool =
@@ -56,8 +61,9 @@ class ConnectorFactory(
         val workers = createWorkerPool()
 
         return when(proto) {
-            Protocol.tcp -> TcpConnector(name, bind, connect, loadBlackLists(blacklists), buffers, workers)
-            Protocol.udp -> UdpConnector(name, bind, connect, loadBlackLists(blacklists), workers, buffers)
+            Protocol.tcp -> TcpConnector(name, bind, connect, loadBlackLists(blacklists), workers, buffers)
+            //Protocol.udp -> UdpConnector(name, bind, connect, loadBlackLists(blacklists), workers, buffers)
+            Protocol.udp -> error("UDP is not yet supported")
         }
     }
 }

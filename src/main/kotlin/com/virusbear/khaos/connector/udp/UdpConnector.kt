@@ -1,89 +1,51 @@
 package com.virusbear.khaos.connector.udp
 
-import com.virusbear.khaos.util.Blacklist
 import com.virusbear.khaos.config.Protocol
-import com.virusbear.khaos.connector.Connector
-import com.virusbear.khaos.connector.tcp.TcpConnection
-import io.ktor.utils.io.pool.*
-import mu.KotlinLogging
-import java.net.BindException
+import com.virusbear.khaos.connector.AbstractConnector
+import com.virusbear.khaos.util.Blacklist
+import com.virusbear.khaos.util.KhaosBufferPool
+import com.virusbear.khaos.util.KhaosWorkerPool
 import java.net.InetSocketAddress
-import java.nio.channels.AlreadyBoundException
+import java.net.SocketAddress
 import java.nio.channels.DatagramChannel
-import java.nio.channels.Selector
-import java.nio.channels.ServerSocketChannel
-import java.util.concurrent.ExecutorService
-import kotlin.concurrent.thread
+import java.nio.channels.SelectionKey
 
 class UdpConnector(
     name: String,
     bind: InetSocketAddress,
-    connect: InetSocketAddress,
+    private val connect: InetSocketAddress,
     blacklist: Blacklist,
-    val workerPool: ExecutorService,
-    val bufferPool: DirectByteBufferPool
-): Connector(name, bind, connect, blacklist, Protocol.udp) {
-    private val Logger = KotlinLogging.logger("UdpConnector($name)")
+    private val workerPool: KhaosWorkerPool,
+    private val bufferPool: KhaosBufferPool
+): AbstractConnector(name, bind, blacklist, Protocol.udp) {
+    override val socket = DatagramChannel.open()
 
-    private val selector = Selector.open()
-    private val socket = DatagramChannel(null)
-    private var selectorThread: Thread? = null
+    override fun onReadable(key: SelectionKey) {
+        val channel = key.channel() as DatagramChannel
 
-    //TODO: refactor run implementation to abstract Connector class? Similar implementation as TcpConnector
-    private fun run() {
-        Logger.info("Connector started")
-
-        while(selector.isOpen) {
-            selector.select { key ->
-                if(key.isAcceptable) {
-                    val channel = (key.channel() as ServerSocketChannel)
-                    val client = channel.accept()
-                    if((client.remoteAddress as? InetSocketAddress)?.hostString !in blacklist) {
-                        Logger.debug("Accepting connection from ${client.remoteAddress}")
-                        TcpConnection.configure(this, client, connect, selector, bufferPool, workerPool)
-                            .let { connection ->
-                                connections += connection
-                            }
-                    } else {
-                        Logger.debug("Rejecting connection from ${client.remoteAddress}")
-                        client.close()
-                    }
+        key.interestOpsAnd(SelectionKey.OP_READ.inv())
+        workerPool.submit {
+            val buffer = bufferPool.borrow()
+            try {
+                while(true) {
+                    val address = channel.receive(buffer) ?: break
+                    val conn = (connections.firstOrNull { it.address == address } as? UdpConnection) ?: createConnection(address)
+                    buffer.flip()
+                    conn.transfer(buffer)
                 }
-                if(key.isReadable) {
-                    val connection = (key.attachment() as TcpConnection)
-                    connection.service(key)
-                }
+            } finally {
+                bufferPool.recycle(buffer)
             }
+            key.interestOpsOr(SelectionKey.OP_READ)
+            key.selector().wakeup()
         }
-
-        Logger.info("Closing connector")
-        close()
     }
 
-    //TODO: refactor start implementation to abstract Connector class? Similar implementation as TcpConnector
-    fun start(wait: Boolean = false) {
-        try {
-            socket.bind(bind)
-        } catch(ex: AlreadyBoundException) {
-            Logger.warn("Error binding connector: Already bound")
-            close()
-            return
-        } catch(ex: BindException) {
-            Logger.warn("Error binding connector: ${ex.message}")
-            close()
-            return
-        }
+    private fun createConnection(address: SocketAddress): UdpConnection =
+        UdpConnection(this, address, connect, bufferPool, workerPool)
 
-        thread(isDaemon = true, name = "Connector($name)") {
-            use {
-                run()
-            }
-        }.apply {
-            selectorThread = this
-
-            if(wait) {
-                join()
-            }
-        }
+    override fun close() {
+        super.close()
+        bufferPool.release()
     }
 }

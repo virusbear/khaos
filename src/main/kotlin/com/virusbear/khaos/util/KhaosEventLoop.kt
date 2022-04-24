@@ -25,11 +25,27 @@ class KhaosEventLoop: AutoCloseable {
         while(selector.isOpen) {
             selector.keys()
             selector.select { key ->
+                //TODO: create abstractionlayer above SelectionKey for Listeners. Avoid having to deal with low level SelectionKeys. This would also help swapping out Selector for different implementations
+
+                val keyListener = key.attachment() as? Listener?
+
                 when {
-                    key.isAcceptable -> listeners.forEach { it.onAcceptable(key) }
-                    key.isConnectable -> listeners.forEach { it.onConnectable(key) }
-                    key.isReadable -> listeners.forEach { it.onReadable(key) }
-                    key.isWritable -> listeners.forEach { it.onWritable(key) }
+                    key.isAcceptable -> {
+                        keyListener?.onAcceptable(key)
+                        listeners.forEach { it.onAcceptable(key) }
+                    }
+                    key.isConnectable -> {
+                        keyListener?.onConnectable(key)
+                        listeners.forEach { it.onConnectable(key) }
+                    }
+                    key.isReadable -> {
+                        keyListener?.onReadable(key)
+                        listeners.forEach { it.onReadable(key) }
+                    }
+                    key.isWritable -> {
+                        keyListener?.onWritable(key)
+                        listeners.forEach { it.onWritable(key) }
+                    }
                 }
             }
         }
@@ -61,8 +77,10 @@ class KhaosEventLoop: AutoCloseable {
         }
     }
 
-    fun register(sel: SelectableChannel, interestOps: Int): SelectionKey =
-        sel.register(selector, interestOps)
+    fun register(sel: SelectableChannel, interestOps: Int, listener: Listener? = null): SelectionKey =
+        sel.register(selector, interestOps).apply {
+            attach(listener)
+        }
 
     fun wakeup() {
         selector.wakeup()
@@ -74,5 +92,6 @@ class KhaosEventLoop: AutoCloseable {
     override fun close() {
         statistics.close()
         selector.close()
+        //maybe call join() at this point()
     }
 }

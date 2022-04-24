@@ -17,7 +17,7 @@ application {
     mainClass.set("com.virusbear.ApplicationKt")
 
     val isDevelopment: Boolean = project.ext.has("development")
-    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
+    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment", "-XX:+UseZGC")
 }
 
 repositories {
