@@ -7,6 +7,9 @@ import java.nio.channels.Selector
 import java.util.*
 import kotlin.concurrent.thread
 
+//TODO: use single eventloop for all connectors.
+//    : as eventloop is not doing very much it is quite overkill to create dedicated thread per connector
+//    : how to access/handle global eventloop without passing as parameter or using Global state
 class KhaosEventLoop: AutoCloseable {
     interface Listener {
         fun onAcceptable(key: SelectionKey) {}
@@ -27,26 +30,22 @@ class KhaosEventLoop: AutoCloseable {
             selector.select { key ->
                 //TODO: create abstractionlayer above SelectionKey for Listeners. Avoid having to deal with low level SelectionKeys. This would also help swapping out Selector for different implementations
 
-                val keyListener = key.attachment() as? Listener?
+                val handler = (key.attachment() as? KhaosEventHandler?) ?: return@select
 
-                when {
-                    key.isAcceptable -> {
-                        keyListener?.onAcceptable(key)
-                        listeners.forEach { it.onAcceptable(key) }
-                    }
-                    key.isConnectable -> {
-                        keyListener?.onConnectable(key)
-                        listeners.forEach { it.onConnectable(key) }
-                    }
-                    key.isReadable -> {
-                        keyListener?.onReadable(key)
-                        listeners.forEach { it.onReadable(key) }
-                    }
-                    key.isWritable -> {
-                        keyListener?.onWritable(key)
-                        listeners.forEach { it.onWritable(key) }
-                    }
+                if(key.isAcceptable) {
+                    handler.handle(KhaosContext(this, key, Interest.Accept))
                 }
+                if(key.isConnectable) {
+                    handler.handle(KhaosContext(this, key, Interest.Connect))
+                }
+                if(key.isWritable) {
+                    handler.handle(KhaosContext(this, key, Interest.Write))
+                }
+                if(key.isReadable) {
+                    handler.handle(KhaosContext(this, key, Interest.Read))
+                }
+
+                //TODO: Handle listener for statistics
             }
         }
 
