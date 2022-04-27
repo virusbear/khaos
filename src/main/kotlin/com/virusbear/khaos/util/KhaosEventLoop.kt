@@ -76,10 +76,19 @@ class KhaosEventLoop: AutoCloseable {
         }
     }
 
-    fun register(sel: SelectableChannel, interestOps: Int, listener: Listener? = null): SelectionKey =
-        sel.register(selector, interestOps).apply {
-            attach(listener)
-        }
+    fun register(sel: SelectableChannel, interest: Interest, handler: KhaosEventHandler): KhaosContext {
+        val key = sel.keyFor(selector) ?: sel.register(selector, interest.selectionOp)
+        //TODO: which object do we want to attach here?
+        key.attach(handler)
+        return KhaosContext(this, key, interest)
+    }
+
+
+    fun unregister(sel: SelectableChannel, interest: Interest) {
+        val key = sel.keyFor(selector) ?: return
+
+        KhaosContext(this, key, interest).disable()
+    }
 
     fun wakeup() {
         selector.wakeup()

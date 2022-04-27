@@ -1,5 +1,6 @@
 package com.virusbear.khaos.util
 
+import java.nio.channels.SelectableChannel
 import java.nio.channels.SelectionKey
 
 enum class Interest {
@@ -18,6 +19,8 @@ val Interest.selectionOp: Int
     }
 
 
+typealias Attachment = Map<Interest, KhaosEventHandler>
+
 //TODO: how to access channel associated with Context?
 //TODO: add additional interface handling acceptable and readable/writable objects to be retrieved here. those objects would wrap *Channel implementations to hide implementation details
 class KhaosContext(
@@ -30,7 +33,7 @@ class KhaosContext(
     }
 
     fun disable() {
-        key.interestOpsAnd(interest.selectionOp)
+        key.interestOpsAnd(interest.selectionOp.inv())
     }
 
     fun enable() {
@@ -42,9 +45,9 @@ class KhaosContext(
         get() =
             key.interestOps() and interest.selectionOp != 0
 
-    fun cancel() {
-        key.cancel()
-    }
+    val channel: SelectableChannel //TODO: wrap in custom implementation of channels
+        get() =
+            key.channel()
 }
 
 interface KhaosEventHandler {
